@@ -1,0 +1,103 @@
+# `name` value will appear "as is" in the badge.
+# See https://docs.github.com/en/actions/configuring-and-managing-workflows/configuring-a-workflow#adding-a-workflow-status-badge-to-your-repository
+name: "release tag"
+
+on:
+  push:
+    tags:
+      - "**"
+
+env:
+  ZTUNNEL_GCA_BUCKET_URL_FROM_TID: "https://storage.googleapis.com/tetrate-istio-subscription-build/ztunnel-tetrate"
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+
+    outputs:
+      image: ${{ steps.config.outputs.image }}
+      tag: ${{ steps.git.outputs.tag }}
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+
+      - id: config
+        run: |
+          source common/scripts/setup_env.sh
+          echo "::set-output name=image::${IMG}" # ISTIO_BUILD_TOOLS
+      - id: git
+        run: |
+          TAG=
+          if [[ "${GITHUB_REF:-}" == refs/tags/* ]]; then
+            TAG=$( echo "${GITHUB_REF}" | tail -c +11 )
+          fi
+          if [[ "${TAG}" != "" && "${CUSTOM_BUILD_TAG:-}" != "" ]]; then
+            TAG="${TAG}-${CUSTOM_BUILD_TAG}"
+          fi
+          if [[ "${TAG}" != "" && "${BUILD_FIPS:-false}" == "true" ]]; then
+            TAG="${TAG}-fips"
+          fi
+          echo "::set-output name=tag::${TAG}"
+
+  release:
+    needs: config
+    name: "Release ${{ matrix.arch }}"
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: [self-hosted, linux, x64, arc]
+          - arch: arm64
+            runner: [self-hosted, linux, x64, arc] # Use x64 runner for cross-compilation
+    runs-on: ${{ matrix.runner }}
+
+    container:
+      image: ${{ needs.config.outputs.image }} # ISTIO_BUILD_TOOLS
+      env:
+        BUILD_WITH_CONTAINER: "0"
+        GOOGLE_APPLICATION_CREDENTIALS: /gcs.key.json
+        TARGET_ARCH: ${{ matrix.arch }}
+        GCS_CREDENTIALS: ${{ secrets.TETRATE_CI_GCS_CREDENTIALS }}
+
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # fetch all history for all tags and branches
+
+      - name: "Fix git commands failing with 'fatal: unsafe repository (... is owned by someone else)'"
+        # see https://github.com/actions/checkout/issues/766
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: "Setup Rust"
+        run: |
+          rustup default stable
+          rustup component add rust-src
+
+          # Install cross-compilation targets
+          rustup target add x86_64-unknown-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+
+          # Install cross-compilation tools
+          apt-get update
+          apt-get install -y gcc gcc-aarch64-linux-gnu
+
+      # - name: "tmate session"
+      #   uses: mxschmitt/action-tmate@v3
+      #   with:
+      #     detached: true # when true other steps will continue
+
+      - name: "GCS Credentials"
+        env:
+          GCS_CREDENTIALS: ${{ secrets.TETRATE_CI_GCS_CREDENTIALS }}
+        run: |
+          echo "${GCS_CREDENTIALS}" | base64 -d > ${GOOGLE_APPLICATION_CREDENTIALS}
+          gcloud auth activate-service-account --key-file ${GOOGLE_APPLICATION_CREDENTIALS}
+      - env:
+          GCS_BUCKET: ${{ secrets.TETRATE_CI_GCS_BUCKET }}
+          PUBLISH_GCS_ALIASES: "0" # don't publish aliases to GCS
+          VERSION: ${{ needs.config.outputs.tag }}
+          ISTIO_ZTUNNEL_BASE_URL: ${{ env.ZTUNNEL_GCA_BUCKET_URL_FROM_TID }}
+        run: ARCH=${{ matrix.arch }} DEST=gs://tetrate-istio-subscription-build/ztunnel-tetrate make release
