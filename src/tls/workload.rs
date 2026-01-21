@@ -111,7 +111,11 @@ impl ClientCertVerifier for TrustDomainVerifier {
         let res = self
             .base
             .verify_client_cert(end_entity, intermediates, now)?;
-        self.verify_trust_domain(end_entity)?;
+        // NOTE(vikas): We don't verify the trust domain at server side because
+        // we dont know client identity in advance.
+        // Upstream is doing this check to verify the trust domain of client and server are same,
+        // which is not the case in cross-cluster traffic.
+        //self.verify_trust_domain(end_entity)?;
         Ok(res)
     }
 
