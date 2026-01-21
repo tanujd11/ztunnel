@@ -25,27 +25,39 @@ case $(uname -m) in
   *) echo "unsupported architecture"; exit 1;;
 esac
 
+# Allow override via TARGET_ARCH environment variable for cross-compilation
+if [[ -n "${TARGET_ARCH}" ]]; then
+  export ARCH="${TARGET_ARCH}"
+fi
+
+# Set Rust target based on architecture
+case "${ARCH}" in
+  amd64) RUST_TARGET="x86_64-unknown-linux-gnu";;
+  arm64) RUST_TARGET="aarch64-unknown-linux-gnu";;
+  *) echo "unsupported target architecture: ${ARCH}"; exit 1;;
+esac
+
 if [[ "$TLS_MODE" == "boring" ]]; then
   if [[ "$ARCH" == "arm64" ]]; then
     # TODO(https://github.com/istio/ztunnel/issues/357) clean up this hack
     sed -i 's/x86_64/arm64/g' .cargo/config.toml
   fi
-  cargo build --release --no-default-features -F tls-boring
+  cargo build --release --target "${RUST_TARGET}" --no-default-features -F tls-boring
 elif [[ "$TLS_MODE" == "aws-lc" ]]; then
-  cargo build --release --no-default-features -F tls-aws-lc
+  cargo build --release --target "${RUST_TARGET}" --no-default-features -F tls-aws-lc
 elif [[ "$TLS_MODE" == "openssl" ]]; then
-  cargo build --release --no-default-features -F tls-openssl
+  cargo build --release --target "${RUST_TARGET}" --no-default-features -F tls-openssl
 else
-  cargo build --release
+  cargo build --release --target "${RUST_TARGET}"
 fi
 
 SHA="$(git rev-parse --verify HEAD)"
 BINARY_PREFIX=${BINARY_PREFIX:-"ztunnel"}
 RELEASE_NAME="${BINARY_PREFIX}-${SHA}-${ARCH}"
-ls -lh "${WD}/../out/rust/release/ztunnel"
+ls -lh "${WD}/../out/rust/${RUST_TARGET}/release/ztunnel"
 DEST="${DEST:-gs://istio-build/ztunnel}"
 if [[ "$CI" == "" && "$DEST" == "gs://istio-build/ztunnel" ]]; then
   echo "Outside of CI, DEST must be explicitly set"
   exit 1
 fi
-gsutil cp "${WD}/../out/rust/release/ztunnel" "${DEST}/${RELEASE_NAME}"
+gsutil cp "${WD}/../out/rust/${RUST_TARGET}/release/ztunnel" "${DEST}/${RELEASE_NAME}"
