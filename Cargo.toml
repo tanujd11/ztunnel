@@ -11,7 +11,7 @@ tls-boring = ["dep:boring", "dep:boring-sys", "boring-rustls-provider/fips-only"
 tls-ring = ["dep:ring", "rustls/ring", "tokio-rustls/ring", "hyper-rustls/ring", "dep:rcgen"]
 tls-aws-lc = ["dep:ring", "rustls/aws_lc_rs", "tokio-rustls/aws_lc_rs", "hyper-rustls/aws-lc-rs", "dep:rcgen", "rcgen/aws_lc_rs"]
 tls-openssl = ["dep:rustls-openssl", "dep:openssl" ]
-testing = ["dep:rcgen", "rcgen/x509-parser"] # Enables utilities supporting tests.
+testing = ["dep:rcgen", "rcgen/x509-parser", "dep:tempfile"] # Enables utilities supporting tests.
 
 [lib]
 path = "src/lib.rs"
@@ -40,7 +40,7 @@ boring-sys = { version = "4", optional = true }
 ring = { version = "0.17", optional = true }
 
 # Enabled with 'tls-openssl'
-rustls-openssl = { version = "0.3", optional = true }
+rustls-openssl = { version = "0.3", optional = true, features = ["tls12"]}
 openssl = { version = "0.10", optional = true }
 
 anyhow = "1.0"
@@ -81,7 +81,7 @@ prost = "0.13"
 prost-types = "0.13"
 rand = { version = "0.9" , features = ["small_rng"]}
 rcgen = { version = "0.14", optional = true, features = ["pem"] }
-rustls = { version = "0.23", default-features = false }
+rustls = { version = "0.23", features = ["tls12"], default-features = false }
 rustls-native-certs = "0.8"
 rustls-pemfile = "2.2"
 serde = { version = "1.0", features = ["derive", "rc"] }
@@ -113,6 +113,9 @@ tracing-core = "0.1"
 tracing-appender = "0.2"
 tokio-util = { version = "0.7", features = ["io-util"] }
 educe = "0.6"
+notify = "6.1"
+notify-debouncer-full = "0.3"
+tempfile = { version = "3.21", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 netns-rs = "0.1"
@@ -155,7 +158,7 @@ test-case = "3.3"
 oid-registry = "0.8"
 rcgen = { version = "0.14", features = ["pem", "x509-parser"] }
 x509-parser = { version = "0.17", default-features = false, features = ["verify"] }
-ctor = "0.5"
+ctor = "1.0"
 
 [lints.clippy]
 # This rule makes code more confusing
