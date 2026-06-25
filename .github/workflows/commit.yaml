@@ -48,9 +48,9 @@ jobs:
         arch: [amd64, arm64]
         include:
           - arch: amd64
-            runner: [self-hosted, linux, x64, arc]
+            runner: default-runner-set
           - arch: arm64
-            runner: [self-hosted, linux, x64, arc] # Use x64 runner for cross-compilation
+            runner: default-runner-set # Use x64 runner for cross-compilation
     runs-on: ${{ matrix.runner }}
 
     container:
