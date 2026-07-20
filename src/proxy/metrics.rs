@@ -517,6 +517,7 @@ impl ConnectionResultBuilder {
             src.workload = self.src.1.as_deref().map(to_value),
             src.namespace = self.tl.source_workload_namespace.to_value(),
             src.identity = self.tl.source_principal.as_ref().filter(|_| mtls).map(to_value_owned),
+            src.cluster = self.tl.source_cluster.to_value(),
 
             dst.addr = %self.dst.0,
             dst.hbone_addr = self.hbone_target.as_ref().map(display),
@@ -524,6 +525,7 @@ impl ConnectionResultBuilder {
             dst.workload = self.dst.1.as_deref().map(to_value),
             dst.namespace = self.tl.destination_workload_namespace.to_value(),
             dst.identity = self.tl.destination_principal.as_ref().filter(|_| mtls).map(to_value_owned),
+            dst.cluster = self.tl.destination_cluster.to_value(),
 
             direction = if self.tl.reporter == Reporter::source {
                 "outbound"
@@ -605,6 +607,7 @@ impl ConnectionResult {
             src.workload = self.src.1.as_deref().map(to_value),
             src.namespace = tl.source_workload_namespace.to_value(),
             src.identity = tl.source_principal.as_ref().filter(|_| mtls).map(to_value_owned),
+            src.cluster = tl.source_cluster.to_value(),
 
             dst.addr = %self.dst.0,
             dst.hbone_addr = self.hbone_target.as_ref().map(display),
@@ -612,6 +615,7 @@ impl ConnectionResult {
             dst.workload = self.dst.1.as_deref().map(to_value),
             dst.namespace = tl.destination_workload_namespace.to_value(),
             dst.identity = tl.destination_principal.as_ref().filter(|_| mtls).map(to_value_owned),
+            dst.cluster = tl.destination_cluster.to_value(),
 
             direction = if tl.reporter == Reporter::source {
                 "outbound"
