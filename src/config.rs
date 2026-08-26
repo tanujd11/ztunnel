@@ -114,6 +114,7 @@ const PROXY_MODE_DEDICATED: &str = "dedicated";
 const PROXY_MODE_SHARED: &str = "shared";
 
 const LOCALHOST_APP_TUNNEL: &str = "LOCALHOST_APP_TUNNEL";
+const ENABLE_ENHANCED_BAGGAGE: &str = "ENABLE_RESPONSE_BAGGAGE";
 
 #[derive(serde::Serialize, Clone, Debug, PartialEq, Eq)]
 pub enum RootCert {
@@ -316,6 +317,8 @@ pub struct Config {
     pub ztunnel_workload: Option<state::WorkloadInfo>,
 
     pub ipv6_enabled: bool,
+
+    pub enable_enhanced_baggage: bool,
 }
 
 #[derive(serde::Serialize, Clone, Copy, Debug)]
@@ -872,6 +875,7 @@ pub fn construct_config(pc: ProxyConfig) -> Result<Config, Error> {
         ztunnel_identity,
         ztunnel_workload,
         ipv6_enabled,
+        enable_enhanced_baggage: parse_default(ENABLE_ENHANCED_BAGGAGE, true)?,
     })
 }
 
